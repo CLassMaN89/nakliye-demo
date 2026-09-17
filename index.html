@@ -1,0 +1,1520 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+
+<title>Nakliye Navigasyon Demo</title>
+
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#map {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont,
+                 "Segoe UI", Roboto, Arial, sans-serif;
+
+    background: #e9eef4;
+    color: #172033;
+    overflow: hidden;
+}
+
+#map {
+    position: fixed;
+    inset: 0;
+    background: #dce4eb;
+}
+
+/* =========================
+   ÜST ARAMA
+========================= */
+
+.top {
+    position: fixed;
+    z-index: 1000;
+
+    top: max(14px, env(safe-area-inset-top));
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    width: min(760px, calc(100% - 28px));
+
+    display: flex;
+    gap: 10px;
+}
+
+.search {
+    flex: 1;
+
+    background: #fff;
+
+    border-radius: 18px;
+
+    box-shadow:
+        0 8px 30px rgba(29, 43, 61, .14);
+
+    padding: 11px;
+
+    display: flex;
+    gap: 9px;
+}
+
+.search input {
+    min-width: 0;
+    flex: 1;
+
+    border: 0;
+    outline: 0;
+
+    font-size: 15px;
+
+    padding: 7px 9px;
+}
+
+button {
+    border: 0;
+    cursor: pointer;
+    font-weight: 750;
+}
+
+.routeBtn {
+    background: #1677ff;
+    color: #fff;
+
+    border-radius: 12px;
+
+    padding: 0 17px;
+}
+
+.routeBtn:hover {
+    background: #0969e8;
+}
+
+.locBtn {
+    width: 52px;
+
+    border-radius: 18px;
+
+    background: #fff;
+
+    box-shadow:
+        0 8px 30px rgba(29, 43, 61, .14);
+
+    font-size: 20px;
+}
+
+/* =========================
+   DURUM
+========================= */
+
+.status {
+    position: fixed;
+
+    z-index: 1000;
+
+    left: 14px;
+    top: 92px;
+
+    background: rgba(16, 24, 40, .92);
+    color: #fff;
+
+    padding: 10px 13px;
+
+    border-radius: 12px;
+
+    font-size: 12px;
+
+    box-shadow:
+        0 8px 25px rgba(0,0,0,.14);
+}
+
+/* =========================
+   TRAFİK
+========================= */
+
+.traffic {
+    position: fixed;
+
+    z-index: 999;
+
+    right: 14px;
+    top: 92px;
+
+    background: #fff;
+
+    border-radius: 13px;
+
+    padding: 10px 12px;
+
+    box-shadow:
+        0 8px 25px rgba(0,0,0,.12);
+
+    font-size: 12px;
+}
+
+.dot {
+    display: inline-block;
+
+    width: 8px;
+    height: 8px;
+
+    border-radius: 50%;
+
+    background: #20b26b;
+
+    margin-right: 5px;
+}
+
+/* =========================
+   NAVİGASYON PANELİ
+========================= */
+
+.nav {
+    position: fixed;
+
+    z-index: 1000;
+
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    bottom: max(
+        18px,
+        env(safe-area-inset-bottom)
+    );
+
+    width: min(
+        650px,
+        calc(100% - 28px)
+    );
+
+    background: #fff;
+
+    border-radius: 24px;
+
+    box-shadow:
+        0 15px 50px rgba(20, 36, 58, .19);
+
+    padding: 17px;
+}
+
+.navTop {
+    display: flex;
+
+    align-items: center;
+
+    gap: 15px;
+}
+
+.turn {
+    width: 54px;
+    height: 54px;
+
+    border-radius: 17px;
+
+    background: #1677ff;
+    color: #fff;
+
+    display: grid;
+
+    place-items: center;
+
+    font-size: 28px;
+}
+
+.navText {
+    flex: 1;
+}
+
+.navText b {
+    display: block;
+
+    font-size: 19px;
+}
+
+.navText span {
+    font-size: 13px;
+
+    color: #667085;
+}
+
+/* =========================
+   İSTATİSTİK
+========================= */
+
+.stats {
+    display: grid;
+
+    grid-template-columns:
+        1fr 1fr 1fr;
+
+    gap: 8px;
+
+    margin-top: 14px;
+}
+
+.stat {
+    background: #f4f7fb;
+
+    border-radius: 13px;
+
+    padding: 9px;
+
+    text-align: center;
+}
+
+.stat b {
+    display: block;
+
+    font-size: 14px;
+}
+
+.stat small {
+    color: #667085;
+}
+
+/* =========================
+   İLERLEME
+========================= */
+
+.progress {
+    height: 5px;
+
+    background: #e8edf4;
+
+    border-radius: 20px;
+
+    margin-top: 13px;
+
+    overflow: hidden;
+}
+
+.bar {
+    height: 100%;
+
+    width: 0;
+
+    background: #1677ff;
+
+    transition: width .4s;
+}
+
+/* =========================
+   ARAÇ
+========================= */
+
+.truck {
+    width: 40px;
+    height: 40px;
+
+    background: #1677ff;
+
+    border: 4px solid #fff;
+
+    border-radius: 50%;
+
+    box-shadow:
+        0 5px 18px rgba(0,0,0,.27);
+
+    display: grid;
+
+    place-items: center;
+
+    font-size: 20px;
+}
+
+/* =========================
+   HEDEF
+========================= */
+
+.pin {
+    font-size: 30px;
+
+    filter:
+        drop-shadow(
+            0 4px 5px rgba(0,0,0,.25)
+        );
+}
+
+/* =========================
+   MOBİL
+========================= */
+
+@media(max-width:600px) {
+
+    .top {
+        top: max(
+            8px,
+            env(safe-area-inset-top)
+        );
+    }
+
+    .status,
+    .traffic {
+        top: 80px;
+    }
+
+    .traffic {
+        display: none;
+    }
+
+    .nav {
+        padding: 14px;
+    }
+
+    .navText b {
+        font-size: 16px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<!-- ÜST ARAMA -->
+
+<div class="top">
+
+    <div class="search">
+
+        <input
+            id="destination"
+            value="Sancaktepe, İstanbul"
+            placeholder="Varış noktası yazın"
+        >
+
+        <button
+            class="routeBtn"
+            id="routeBtn"
+        >
+            ROTA
+        </button>
+
+    </div>
+
+    <button
+        class="locBtn"
+        id="locBtn"
+        title="Konumumu kullan"
+    >
+        ⌖
+    </button>
+
+</div>
+
+
+<!-- DURUM -->
+
+<div
+    class="status"
+    id="status"
+>
+    Demo hazırlanıyor…
+</div>
+
+
+<!-- TRAFİK -->
+
+<div class="traffic">
+
+    <span class="dot"></span>
+
+    Canlı navigasyon demosu
+
+</div>
+
+
+<!-- ALT NAVİGASYON -->
+
+<div class="nav">
+
+    <div class="navTop">
+
+        <div class="turn">
+            ↑
+        </div>
+
+        <div class="navText">
+
+            <b id="instruction">
+                Rotayı başlatın
+            </b>
+
+            <span id="sub">
+                Araç rota üzerinde otomatik ilerler
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <div class="stats">
+
+        <div class="stat">
+
+            <b id="distance">
+                —
+            </b>
+
+            <small>
+                Kalan mesafe
+            </small>
+
+        </div>
+
+
+        <div class="stat">
+
+            <b id="eta">
+                —
+            </b>
+
+            <small>
+                Tahmini süre
+            </small>
+
+        </div>
+
+
+        <div class="stat">
+
+            <b id="speed">
+                0 km/s
+            </b>
+
+            <small>
+                Hız
+            </small>
+
+        </div>
+
+    </div>
+
+
+    <div class="progress">
+
+        <div
+            class="bar"
+            id="bar"
+        ></div>
+
+    </div>
+
+</div>
+
+
+<script
+src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+</script>
+
+<script>
+
+/* =========================
+   BAŞLANGIÇ AYARLARI
+========================= */
+
+const fallbackStart = [
+    41.0082,
+    28.9784
+];
+
+const fallbackEnd = [
+    40.9950,
+    29.2310
+];
+
+
+/* =========================
+   HARİTA
+========================= */
+
+const map = L.map(
+    "map",
+    {
+        zoomControl: false
+    }
+).setView(
+    fallbackStart,
+    11
+);
+
+
+/* =========================
+   OPENSTREETMAP
+========================= */
+
+L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+        maxZoom: 19,
+
+        attribution:
+            "&copy; OpenStreetMap"
+    }
+).addTo(map);
+
+
+L.control.zoom(
+    {
+        position:
+            "bottomright"
+    }
+).addTo(map);
+
+
+/* =========================
+   DEĞİŞKENLER
+========================= */
+
+let start =
+    fallbackStart;
+
+let end =
+    fallbackEnd;
+
+let route = [];
+
+let marker = null;
+
+let destinationMarker = null;
+
+let line = null;
+
+let trafficLines = [];
+
+let timer = null;
+
+let idx = 0;
+
+let totalKm = 0;
+
+
+const statusEl =
+    document.getElementById(
+        "status"
+    );
+
+
+/* =========================
+   ARAÇ İKONU
+========================= */
+
+const truckIcon =
+    L.divIcon({
+
+        className: "",
+
+        html:
+            '<div class="truck">🚚</div>',
+
+        iconSize:
+            [40,40],
+
+        iconAnchor:
+            [20,20]
+
+    });
+
+
+/* =========================
+   HEDEF İKONU
+========================= */
+
+const pinIcon =
+    L.divIcon({
+
+        className: "",
+
+        html:
+            '<div class="pin">📍</div>',
+
+        iconSize:
+            [32,40],
+
+        iconAnchor:
+            [16,38]
+
+    });
+
+
+/* =========================
+   MESAFE HESABI
+========================= */
+
+function hav(a,b) {
+
+    const R = 6371;
+
+    const p =
+        Math.PI / 180;
+
+    const dLat =
+        (b[0]-a[0]) * p;
+
+    const dLon =
+        (b[1]-a[1]) * p;
+
+    const x =
+        Math.sin(dLat/2) ** 2 +
+
+        Math.cos(a[0]*p) *
+
+        Math.cos(b[0]*p) *
+
+        Math.sin(dLon/2) ** 2;
+
+    return (
+        2 *
+        R *
+        Math.asin(
+            Math.sqrt(x)
+        )
+    );
+}
+
+
+/* =========================
+   ROTA MESAFESİ
+========================= */
+
+function routeDistance(points) {
+
+    let d = 0;
+
+    for(
+        let i=1;
+        i<points.length;
+        i++
+    ) {
+
+        d += hav(
+            points[i-1],
+            points[i]
+        );
+
+    }
+
+    return d;
+}
+
+
+/* =========================
+   ADRES ARAMA
+========================= */
+
+async function geocode(q) {
+
+    const url =
+        "https://nominatim.openstreetmap.org/search" +
+
+        "?format=json" +
+
+        "&limit=1" +
+
+        "&q=" +
+
+        encodeURIComponent(q);
+
+
+    const response =
+        await fetch(url);
+
+
+    if(!response.ok) {
+        throw new Error(
+            "Adres bulunamadı"
+        );
+    }
+
+
+    const data =
+        await response.json();
+
+
+    if(!data.length) {
+        throw new Error(
+            "Sonuç bulunamadı"
+        );
+    }
+
+
+    return [
+
+        Number(data[0].lat),
+
+        Number(data[0].lon)
+
+    ];
+}
+
+
+/* =========================
+   ROTA OLUŞTUR
+========================= */
+
+async function buildRoute() {
+
+    clearInterval(timer);
+
+    idx = 0;
+
+
+    statusEl.textContent =
+        "Rota hesaplanıyor…";
+
+
+    const query =
+        document
+        .getElementById(
+            "destination"
+        )
+        .value
+        .trim();
+
+
+    /* ADRESİ BUL */
+
+    try {
+
+        if(query) {
+
+            end =
+                await geocode(
+                    query
+                );
+
+        }
+
+    }
+
+    catch(error) {
+
+        console.warn(
+            "Geocode başarısız."
+        );
+
+        end =
+            fallbackEnd;
+
+    }
+
+
+    /* OSRM ROTA */
+
+    try {
+
+        const url =
+            "https://router.project-osrm.org/route/v1/driving/" +
+
+            start[1] +
+            "," +
+            start[0] +
+            ";" +
+
+            end[1] +
+            "," +
+            end[0] +
+
+            "?overview=full" +
+
+            "&geometries=geojson";
+
+
+        const response =
+            await fetch(url);
+
+
+        const data =
+            await response.json();
+
+
+        if(
+            !data.routes ||
+            !data.routes.length
+        ) {
+
+            throw new Error(
+                "Rota bulunamadı"
+            );
+
+        }
+
+
+        route =
+            data
+            .routes[0]
+            .geometry
+            .coordinates
+            .map(
+                coordinate => [
+
+                    coordinate[1],
+
+                    coordinate[0]
+
+                ]
+            );
+
+
+        totalKm =
+            data
+            .routes[0]
+            .distance /
+            1000;
+
+    }
+
+    catch(error) {
+
+        /*
+        OSRM çalışmazsa
+        demo tamamen beyaz kalmasın.
+
+        Başlangıç-hedef arasında
+        örnek rota oluşturuyoruz.
+        */
+
+        route = [];
+
+
+        for(
+            let i=0;
+            i<=100;
+            i++
+        ) {
+
+            const t =
+                i / 100;
+
+
+            route.push([
+
+                start[0] +
+                (
+                    end[0] -
+                    start[0]
+                ) * t,
+
+                start[1] +
+                (
+                    end[1] -
+                    start[1]
+                ) * t
+
+            ]);
+
+        }
+
+
+        totalKm =
+            routeDistance(
+                route
+            );
+
+    }
+
+
+    draw();
+
+}
+
+
+/* =========================
+   ROTAYI ÇİZ
+========================= */
+
+function draw() {
+
+    if(line) {
+
+        map.removeLayer(
+            line
+        );
+
+    }
+
+
+    if(marker) {
+
+        map.removeLayer(
+            marker
+        );
+
+    }
+
+
+    if(destinationMarker) {
+
+        map.removeLayer(
+            destinationMarker
+        );
+
+    }
+
+
+    trafficLines.forEach(
+        item =>
+            map.removeLayer(
+                item
+            )
+    );
+
+
+    trafficLines = [];
+
+
+    /* ANA MAVİ ROTA */
+
+    line =
+        L.polyline(
+            route,
+            {
+                color:
+                    "#1677ff",
+
+                weight:
+                    7,
+
+                opacity:
+                    .90
+            }
+        )
+        .addTo(map);
+
+
+    /* =====================
+       DEMO TRAFİK
+    ===================== */
+
+    const step =
+        Math.max(
+            12,
+            Math.floor(
+                route.length / 8
+            )
+        );
+
+
+    for(
+        let i=8;
+        i<route.length-5;
+        i+=step
+    ) {
+
+        const segment =
+            route.slice(
+                i,
+                Math.min(
+                    i+5,
+                    route.length
+                )
+            );
+
+
+        let color;
+
+
+        if(i % 3 === 0) {
+
+            color =
+                "#e5484d";
+
+        }
+
+        else if(
+            i % 2 === 0
+        ) {
+
+            color =
+                "#f5a524";
+
+        }
+
+        else {
+
+            color =
+                "#20b26b";
+
+        }
+
+
+        const trafficLine =
+            L.polyline(
+                segment,
+                {
+                    color:
+                        color,
+
+                    weight:
+                        7,
+
+                    opacity:
+                        .95
+                }
+            )
+            .addTo(map);
+
+
+        trafficLines.push(
+            trafficLine
+        );
+
+    }
+
+
+    /* ARAÇ */
+
+    marker =
+        L.marker(
+            route[0],
+            {
+                icon:
+                    truckIcon,
+
+                zIndexOffset:
+                    1000
+            }
+        )
+        .addTo(map);
+
+
+    /* HEDEF */
+
+    destinationMarker =
+        L.marker(
+            end,
+            {
+                icon:
+                    pinIcon
+            }
+        )
+        .addTo(map);
+
+
+    /* ROTAYI EKRANA SIĞDIR */
+
+    map.fitBounds(
+        line.getBounds(),
+        {
+            padding:
+                [55,55]
+        }
+    );
+
+
+    statusEl.textContent =
+        "Navigasyon aktif";
+
+
+    document
+    .getElementById(
+        "instruction"
+    )
+    .textContent =
+        "Rotayı takip edin";
+
+
+    animate();
+
+}
+
+
+/* =========================
+   ARAÇ ANİMASYONU
+========================= */
+
+function animate() {
+
+    const steps =
+        route.length;
+
+
+    timer =
+        setInterval(
+            () => {
+
+
+                if(
+                    idx >=
+                    steps-1
+                ) {
+
+                    clearInterval(
+                        timer
+                    );
+
+
+                    document
+                    .getElementById(
+                        "instruction"
+                    )
+                    .textContent =
+                        "Varış noktasına ulaşıldı";
+
+
+                    document
+                    .getElementById(
+                        "speed"
+                    )
+                    .textContent =
+                        "0 km/s";
+
+
+                    document
+                    .getElementById(
+                        "distance"
+                    )
+                    .textContent =
+                        "0 m";
+
+
+                    document
+                    .getElementById(
+                        "eta"
+                    )
+                    .textContent =
+                        "0 dk";
+
+
+                    document
+                    .getElementById(
+                        "bar"
+                    )
+                    .style.width =
+                        "100%";
+
+
+                    statusEl.textContent =
+                        "Teslimat noktasına ulaşıldı";
+
+
+                    return;
+
+                }
+
+
+                idx++;
+
+
+                marker.setLatLng(
+                    route[idx]
+                );
+
+
+                /* HARİTA ARAÇLA
+                   HAREKET ETSİN */
+
+                if(
+                    idx % 3 === 0
+                ) {
+
+                    map.panTo(
+                        route[idx],
+                        {
+                            animate:
+                                true,
+
+                            duration:
+                                .35
+                        }
+                    );
+
+                }
+
+
+                const progress =
+                    idx /
+                    (steps-1);
+
+
+                const remain =
+                    Math.max(
+                        0,
+                        totalKm *
+                        (1-progress)
+                    );
+
+
+                /* DEMO HIZ */
+
+                const speed =
+                    42 +
+
+                    Math.round(
+
+                        Math.sin(
+                            idx*.3
+                        ) * 8
+
+                        +
+
+                        Math.random()
+                        * 5
+
+                    );
+
+
+                /* KALAN MESAFE */
+
+                if(
+                    remain < 1
+                ) {
+
+                    document
+                    .getElementById(
+                        "distance"
+                    )
+                    .textContent =
+
+                        Math.round(
+                            remain *
+                            1000
+                        )
+
+                        + " m";
+
+                }
+
+                else {
+
+                    document
+                    .getElementById(
+                        "distance"
+                    )
+                    .textContent =
+
+                        remain
+                        .toFixed(1)
+
+                        + " km";
+
+                }
+
+
+                /* ETA */
+
+                document
+                .getElementById(
+                    "eta"
+                )
+                .textContent =
+
+                    Math.max(
+
+                        1,
+
+                        Math.ceil(
+
+                            remain /
+
+                            Math.max(
+                                speed,
+                                1
+                            )
+
+                            * 60
+
+                        )
+
+                    )
+
+                    + " dk";
+
+
+                /* HIZ */
+
+                document
+                .getElementById(
+                    "speed"
+                )
+                .textContent =
+
+                    speed +
+
+                    " km/s";
+
+
+                /* PROGRESS */
+
+                document
+                .getElementById(
+                    "bar"
+                )
+                .style.width =
+
+                    (
+                        progress *
+                        100
+                    )
+                    .toFixed(1)
+
+                    + "%";
+
+
+                document
+                .getElementById(
+                    "sub"
+                )
+                .textContent =
+
+                    "%" +
+
+                    Math.round(
+                        progress *
+                        100
+                    )
+
+                    +
+
+                    " tamamlandı";
+
+
+            },
+
+            450
+
+        );
+
+}
+
+
+/* =========================
+   ROTA BUTONU
+========================= */
+
+document
+.getElementById(
+    "routeBtn"
+)
+.onclick =
+    buildRoute;
+
+
+/* =========================
+   ENTER
+========================= */
+
+document
+.getElementById(
+    "destination"
+)
+.addEventListener(
+    "keydown",
+    event => {
+
+        if(
+            event.key ===
+            "Enter"
+        ) {
+
+            buildRoute();
+
+        }
+
+    }
+);
+
+
+/* =========================
+   GERÇEK KONUM
+========================= */
+
+document
+.getElementById(
+    "locBtn"
+)
+.onclick =
+    () => {
+
+
+        if(
+            !navigator.geolocation
+        ) {
+
+            statusEl.textContent =
+                "Konum özelliği desteklenmiyor";
+
+            return;
+
+        }
+
+
+        statusEl.textContent =
+            "Konum alınıyor…";
+
+
+        navigator
+        .geolocation
+        .getCurrentPosition(
+
+            position => {
+
+
+                start = [
+
+                    position
+                    .coords
+                    .latitude,
+
+                    position
+                    .coords
+                    .longitude
+
+                ];
+
+
+                map.setView(
+                    start,
+                    14
+                );
+
+
+                statusEl.textContent =
+                    "Başlangıç konumu güncellendi";
+
+
+                buildRoute();
+
+            },
+
+
+            () => {
+
+                statusEl.textContent =
+                    "Konum izni alınamadı — demo konumu kullanılacak";
+
+            }
+
+        );
+
+};
+
+
+/* =========================
+   OTOMATİK DEMO BAŞLAT
+========================= */
+
+buildRoute();
+
+</script>
+
+</body>
+</html>
